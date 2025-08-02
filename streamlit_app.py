@@ -2,175 +2,113 @@ import streamlit as st
 import pandas as pd
 import os
 from io import BytesIO
+from datetime import datetime
 
-# --- Configurações gerais ---
+# Cria pasta dados se não existir
+os.makedirs('dados', exist_ok=True)
+caminho_csv = 'dados/horimetro.csv'
 
-st.set_page_config(
-    page_title="Controle de Horímetro - Transjap",
-    page_icon="🏭",
-    layout="centered",
-    initial_sidebar_state="expanded",
-)
-
-# Paleta de cores sólida
-PRIMARY_COLOR = "#0B3954"
-SECONDARY_COLOR = "#BFD7EA"
-BACKGROUND_COLOR = "#E0E0E0"
-TEXT_COLOR = "#1B1B1B"
-
-# CSS customizado
-st.markdown(
-    f"""
-    <style>
-        .css-1d391kg {{
-            background-color: {BACKGROUND_COLOR};
-        }}
-        .css-18ni7ap {{
-            color: {PRIMARY_COLOR};
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }}
-        .css-10trblm {{
-            background-color: {SECONDARY_COLOR};
-            padding: 1rem;
-            border-radius: 8px;
-        }}
-        footer {{
-            visibility: hidden;
-        }}
-        .stButton>button {{
-            background-color: {PRIMARY_COLOR};
-            color: white;
-            font-weight: bold;
-            border-radius: 8px;
-            padding: 8px 18px;
-        }}
-        .stTextInput>div>input {{
-            border-radius: 6px;
-            border: 1.5px solid {PRIMARY_COLOR};
-            padding: 6px;
-        }}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-DATA_FOLDER = "dados"
-DATA_FILE = os.path.join(DATA_FOLDER, "horimetro.csv")
-
-if not os.path.exists(DATA_FOLDER):
-    os.makedirs(DATA_FOLDER)
-
-# --- Funções ---
-
-def carregar_dados():
-    if os.path.exists(DATA_FILE):
-        return pd.read_csv(DATA_FILE, parse_dates=["Data"])
-    else:
-        df = pd.DataFrame(
-            columns=["Data", "Operador", "Frota", "Horímetro Inicial", "Horímetro Final", "Horas Trabalhadas"]
-        )
-        df.to_csv(DATA_FILE, index=False)
-        return df
-
-def salvar_dados(df):
-    df.to_csv(DATA_FILE, index=False)
-
-def calcular_horas(inicial, final):
-    try:
-        h = float(final) - float(inicial)
-        return round(h, 2) if h >= 0 else 0
-    except:
-        return 0
-
+# Função para exportar DataFrame para Excel
 def exportar_excel(df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Horimetro')
-        writer.save()
+        writer.save()  # pode tirar essa linha se der erro, mas normalmente funciona
     processed_data = output.getvalue()
     return processed_data
 
-# --- Login simples ---
-
+# Função de login simples
 def login():
-    st.session_state["logado"] = False
-    st.title("Login - Controle de Horímetro")
-    usuario = st.text_input("Usuário")
-    senha = st.text_input("Senha", type="password")
-    if st.button("Entrar"):
-        if usuario == "admin" and senha == "senha123":
-            st.session_state["logado"] = True
-            st.experimental_rerun()
-        else:
-            st.error("Usuário ou senha incorretos")
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
 
-if "logado" not in st.session_state:
-    st.session_state["logado"] = False
+    if not st.session_state.logged_in:
+        st.title("Login")
+        username = st.text_input("Usuário")
+        password = st.text_input("Senha", type="password")
+        if st.button("Entrar"):
+            # Validação simples, substitua por seu usuário/senha
+            if username == "admin" and password == "1234":
+                st.session_state.logged_in = True
+                st.experimental_set_query_params(logged_in="true")
+            else:
+                st.error("Usuário ou senha incorretos")
+        st.stop()  # Para não continuar sem login
 
-if not st.session_state["logado"]:
-    login()
-    st.stop()
-
-# --- App principal ---
+login()
 
 st.title("Controle de Horímetro - Transjap")
 
-df = carregar_dados()
+# Carregar dados
+if os.path.exists(caminho_csv):
+    df = pd.read_csv(caminho_csv)
+else:
+    df = pd.DataFrame(columns=["Data", "Operador", "Frota", "Horimetro Inicial", "Horimetro Final", "Horas Trabalhadas"])
 
-# Sidebar menu
-menu = st.sidebar.selectbox("Menu", ["Registrar Horímetro", "Visualizar Registros", "Exportar Dados"])
+# Formulário para novo registro
+with st.form("form_horimetro"):
+    operador = st.text_input("Nome do operador")
+    frota = st.selectbox("Número da frota", sorted(df["Frota"].unique()) if not df.empty else ["230", "231", "232"])
+    horimetro_inicial = st.number_input("Horímetro Inicial", min_value=0.0, format="%.2f")
+    horimetro_final = st.number_input("Horímetro Final", min_value=0.0, format="%.2f")
+    data_registro = st.date_input("Data do registro", datetime.today())
+    enviar = st.form_submit_button("Registrar")
 
-if menu == "Registrar Horímetro":
-    st.subheader("Registrar novo horímetro")
-    operador = st.text_input("Nome do Operador")
-    frota = st.text_input("Número da Frota")
-    horimetro_inicial = st.text_input("Horímetro Inicial")
-    horimetro_final = st.text_input("Horímetro Final")
-    data = st.date_input("Data")
-
-    if st.button("Registrar"):
-        if not operador or not frota or not horimetro_inicial or not horimetro_final:
-            st.error("Por favor, preencha todos os campos.")
+    if enviar:
+        if horimetro_final < horimetro_inicial:
+            st.error("Horímetro final não pode ser menor que inicial.")
+        elif operador.strip() == "":
+            st.error("Informe o nome do operador.")
         else:
-            horas_trabalhadas = calcular_horas(horimetro_inicial, horimetro_final)
+            horas_trabalhadas = horimetro_final - horimetro_inicial
             novo_registro = {
-                "Data": pd.to_datetime(data),
+                "Data": data_registro.strftime("%Y-%m-%d"),
                 "Operador": operador,
                 "Frota": frota,
-                "Horímetro Inicial": float(horimetro_inicial),
-                "Horímetro Final": float(horimetro_final),
-                "Horas Trabalhadas": horas_trabalhadas,
+                "Horimetro Inicial": horimetro_inicial,
+                "Horimetro Final": horimetro_final,
+                "Horas Trabalhadas": horas_trabalhadas
             }
             df = pd.concat([df, pd.DataFrame([novo_registro])], ignore_index=True)
-            salvar_dados(df)
-            st.success(f"Registro salvo com sucesso! Horas trabalhadas: {horas_trabalhadas} h")
+            df.to_csv(caminho_csv, index=False)
+            st.success("✅ Registro salvo com sucesso!")
 
-elif menu == "Visualizar Registros":
-    st.subheader("Registros de Horímetro")
-    frota_filtrada = st.selectbox("Filtrar por frota", options=["Todas"] + sorted(df["Frota"].unique().tolist()))
-    if frota_filtrada != "Todas":
-        df_filtrado = df[df["Frota"] == frota_filtrada]
-    else:
-        df_filtrado = df.copy()
+st.markdown("---")
 
-    if df_filtrado.empty:
-        st.info("Nenhum registro encontrado.")
-    else:
-        st.dataframe(df_filtrado.sort_values(by="Data", ascending=False).reset_index(drop=True))
-        st.markdown(f"**Total de registros:** {len(df_filtrado)}")
-        st.markdown(f"**Total de horas registradas:** {round(df_filtrado['Horas Trabalhadas'].sum(), 2)} h")
+# Filtros e exibição dos registros
+st.header("Registros de Horímetro")
 
-elif menu == "Exportar Dados":
-    st.subheader("Exportar dados para Excel")
-    if df.empty:
-        st.info("Nenhum dado para exportar.")
-    else:
-        excel_data = exportar_excel(df)
-        st.download_button(
-            label="Baixar arquivo Excel",
-            data=excel_data,
-            file_name="controle_horimetro.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
+frotas_disponiveis = sorted(df["Frota"].unique()) if not df.empty else []
+frota_filtrar = st.selectbox("Filtrar por frota", options=["Todas"] + frotas_disponiveis)
 
+if frota_filtrar != "Todas":
+    df_filtrado = df[df["Frota"] == frota_filtrar]
+else:
+    df_filtrado = df.copy()
+
+st.dataframe(df_filtrado.sort_values(by="Data", ascending=False), use_container_width=True)
+
+# Estatísticas
+if not df_filtrado.empty:
+    total_horas = round(df_filtrado["Horas Trabalhadas"].sum(), 2)
+    total_registros = df_filtrado.shape[0]
+    st.markdown(f"**Total de registros:** {total_registros}")
+    st.markdown(f"**Total de horas registradas:** {total_horas} h")
+
+    # Botão para exportar Excel
+    excel_data = exportar_excel(df_filtrado)
+    st.download_button(
+        label="📥 Exportar registros filtrados para Excel",
+        data=excel_data,
+        file_name='registros_horimetro.xlsx',
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+else:
+    st.info("Nenhum registro encontrado para os filtros selecionados.")
+
+# Logout
+if st.button("Sair"):
+    st.session_state.logged_in = False
+    st.experimental_set_query_params()
+    st.experimental_rerun()
 
