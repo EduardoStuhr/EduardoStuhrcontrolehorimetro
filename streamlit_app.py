@@ -25,7 +25,6 @@ def login():
         if st.button("Entrar"):
             if username == "admin" and password == "1234":
                 st.session_state.logged_in = True
-                st.set_query_params(logged_in="true")  # <- aqui, novo método
                 st.experimental_rerun()
             else:
                 st.error("Usuário ou senha incorretos")
@@ -33,6 +32,7 @@ def login():
 
 login()
 
+# --- A partir daqui é a aplicação principal ---
 st.title("Controle de Horímetro - Transjap")
 
 # Carregar dados
@@ -98,5 +98,4 @@ else:
 
 if st.button("Sair"):
     st.session_state.logged_in = False
-    st.set_query_params()  # limpa os query params
     st.experimental_rerun()
