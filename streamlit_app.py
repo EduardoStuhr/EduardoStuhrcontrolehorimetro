@@ -59,50 +59,34 @@ if perfil == "Operador":
                 df.to_csv(caminho_csv, index=False)
                 st.success("✅ Registro salvo com sucesso!")
 
-    st.markdown("---")
-    st.subheader("Registros")
-    if not df.empty:
-        st.dataframe(df.sort_values(by="Data", ascending=False), use_container_width=True)
-
-        total_horas = round(df["Horas Trabalhadas"].sum(), 2)
-        total_registros = df.shape[0]
-        st.markdown(f"**Total de registros:** {total_registros}")
-        st.markdown(f"**Total de horas registradas:** {total_horas} h")
-
-        excel_data = exportar_excel(df)
-        st.download_button(
-            label="📥 Exportar registros para Excel",
-            data=excel_data,
-            file_name='registros_horimetro.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-    else:
-        st.info("Nenhum registro encontrado.")
-
 elif perfil == "Administrador":
     st.subheader("Painel Administrativo - Filtro por frota")
-    frotas_disponiveis = sorted(df["Frota"].unique()) if not df.empty else []
-    frota_filtrar = st.selectbox("Filtrar por frota", options=["Todas"] + frotas_disponiveis)
 
-    if frota_filtrar != "Todas":
-        df_filtrado = df[df["Frota"] == frota_filtrar]
-    else:
-        df_filtrado = df.copy()
-
-    if not df_filtrado.empty:
-        st.dataframe(df_filtrado.sort_values(by="Data", ascending=False), use_container_width=True)
-
-        total_horas = round(df_filtrado["Horas Trabalhadas"].sum(), 2)
-        total_registros = df_filtrado.shape[0]
-        st.markdown(f"**Total de registros:** {total_registros}")
-        st.markdown(f"**Total de horas registradas:** {total_horas} h")
-
-        excel_data = exportar_excel(df_filtrado)
-        st.download_button(
-            label="📥 Exportar registros para Excel",
-            data=excel_data,
-            file_name='registros_horimetro.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-    else:
+    if df.empty:
         st.info("Nenhum registro encontrado.")
+    else:
+        frotas_disponiveis = sorted(df["Frota"].unique())
+        frota_filtrar = st.selectbox("Filtrar por frota", options=["Todas"] + frotas_disponiveis)
+
+        if frota_filtrar != "Todas":
+            df_filtrado = df[df["Frota"] == frota_filtrar]
+        else:
+            df_filtrado = df.copy()
+
+        if df_filtrado.empty:
+            st.info("Nenhum registro encontrado para esta frota.")
+        else:
+            st.dataframe(df_filtrado.sort_values(by="Data", ascending=False), use_container_width=True)
+
+            total_horas = round(df_filtrado["Horas Trabalhadas"].sum(), 2)
+            total_registros = df_filtrado.shape[0]
+            st.markdown(f"**Total de registros:** {total_registros}")
+            st.markdown(f"**Total de horas registradas:** {total_horas} h")
+
+            excel_data = exportar_excel(df_filtrado)
+            st.download_button(
+                label="📥 Exportar registros para Excel",
+                data=excel_data,
+                file_name='registros_horimetro.xlsx',
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
