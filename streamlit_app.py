@@ -14,25 +14,12 @@ def exportar_excel(df):
         df.to_excel(writer, index=False, sheet_name='Horimetro')
     return output.getvalue()
 
-def login():
-    if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
+st.set_page_config(
+    page_title="Controle de Horímetro",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-    if not st.session_state.logged_in:
-        st.title("Login")
-        username = st.text_input("Usuário")
-        password = st.text_input("Senha", type="password")
-        if st.button("Entrar"):
-            if username == "admin" and password == "1234":
-                st.session_state.logged_in = True
-                st.experimental_rerun()
-            else:
-                st.error("Usuário ou senha incorretos")
-        st.stop()
-
-login()
-
-# --- A partir daqui é a aplicação principal ---
 st.title("Controle de Horímetro - Transjap")
 
 # Carregar dados
@@ -95,7 +82,3 @@ if not df_filtrado.empty:
     )
 else:
     st.info("Nenhum registro encontrado para os filtros selecionados.")
-
-if st.button("Sair"):
-    st.session_state.logged_in = False
-    st.experimental_rerun()
