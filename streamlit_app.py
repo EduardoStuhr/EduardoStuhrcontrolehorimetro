@@ -28,6 +28,10 @@ if os.path.exists(caminho_csv):
 else:
     df = pd.DataFrame(columns=["Data", "Operador", "Frota", "Horimetro Inicial", "Horimetro Final", "Horas Trabalhadas"])
 
+# Simular perfil do usuário: Operador ou Admin
+perfil = st.sidebar.selectbox("Perfil de acesso", options=["Operador", "Administrador"])
+
+# Formulário para registro
 with st.form("form_horimetro"):
     operador = st.text_input("Nome do operador")
     frota = st.selectbox("Número da frota", sorted(df["Frota"].unique()) if not df.empty else ["230", "231", "232"])
@@ -57,17 +61,23 @@ with st.form("form_horimetro"):
 
 st.markdown("---")
 
-frotas_disponiveis = sorted(df["Frota"].unique()) if not df.empty else []
-frota_filtrar = st.selectbox("Filtrar por frota", options=["Todas"] + frotas_disponiveis)
+# Mostrar dados e filtros dependendo do perfil
+if perfil == "Administrador":
+    st.subheader("Painel Administrativo")
+    frotas_disponiveis = sorted(df["Frota"].unique()) if not df.empty else []
+    frota_filtrar = st.selectbox("Filtrar por frota", options=["Todas"] + frotas_disponiveis)
 
-if frota_filtrar != "Todas":
-    df_filtrado = df[df["Frota"] == frota_filtrar]
+    if frota_filtrar != "Todas":
+        df_filtrado = df[df["Frota"] == frota_filtrar]
+    else:
+        df_filtrado = df.copy()
 else:
-    df_filtrado = df.copy()
-
-st.dataframe(df_filtrado.sort_values(by="Data", ascending=False), use_container_width=True)
+    st.subheader("Registros")
+    df_filtrado = df.copy()  # Operador vê todos os registros sem filtro
 
 if not df_filtrado.empty:
+    st.dataframe(df_filtrado.sort_values(by="Data", ascending=False), use_container_width=True)
+
     total_horas = round(df_filtrado["Horas Trabalhadas"].sum(), 2)
     total_registros = df_filtrado.shape[0]
     st.markdown(f"**Total de registros:** {total_registros}")
@@ -75,10 +85,11 @@ if not df_filtrado.empty:
 
     excel_data = exportar_excel(df_filtrado)
     st.download_button(
-        label="📥 Exportar registros filtrados para Excel",
+        label="📥 Exportar registros para Excel",
         data=excel_data,
         file_name='registros_horimetro.xlsx',
         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
 else:
-    st.info("Nenhum registro encontrado para os filtros selecionados.")
+    st.info("Nenhum registro encontrado.")
+
