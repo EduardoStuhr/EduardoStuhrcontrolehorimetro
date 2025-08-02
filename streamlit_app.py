@@ -8,16 +8,12 @@ from datetime import datetime
 os.makedirs('dados', exist_ok=True)
 caminho_csv = 'dados/horimetro.csv'
 
-# Função para exportar DataFrame para Excel
 def exportar_excel(df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Horimetro')
-        writer.save()  # pode tirar essa linha se der erro, mas normalmente funciona
-    processed_data = output.getvalue()
-    return processed_data
+    return output.getvalue()
 
-# Função de login simples
 def login():
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
@@ -27,13 +23,13 @@ def login():
         username = st.text_input("Usuário")
         password = st.text_input("Senha", type="password")
         if st.button("Entrar"):
-            # Validação simples, substitua por seu usuário/senha
             if username == "admin" and password == "1234":
                 st.session_state.logged_in = True
-                st.experimental_set_query_params(logged_in="true")
+                st.set_query_params(logged_in="true")  # <- aqui, novo método
+                st.experimental_rerun()
             else:
                 st.error("Usuário ou senha incorretos")
-        st.stop()  # Para não continuar sem login
+        st.stop()
 
 login()
 
@@ -45,7 +41,6 @@ if os.path.exists(caminho_csv):
 else:
     df = pd.DataFrame(columns=["Data", "Operador", "Frota", "Horimetro Inicial", "Horimetro Final", "Horas Trabalhadas"])
 
-# Formulário para novo registro
 with st.form("form_horimetro"):
     operador = st.text_input("Nome do operador")
     frota = st.selectbox("Número da frota", sorted(df["Frota"].unique()) if not df.empty else ["230", "231", "232"])
@@ -75,9 +70,6 @@ with st.form("form_horimetro"):
 
 st.markdown("---")
 
-# Filtros e exibição dos registros
-st.header("Registros de Horímetro")
-
 frotas_disponiveis = sorted(df["Frota"].unique()) if not df.empty else []
 frota_filtrar = st.selectbox("Filtrar por frota", options=["Todas"] + frotas_disponiveis)
 
@@ -88,14 +80,12 @@ else:
 
 st.dataframe(df_filtrado.sort_values(by="Data", ascending=False), use_container_width=True)
 
-# Estatísticas
 if not df_filtrado.empty:
     total_horas = round(df_filtrado["Horas Trabalhadas"].sum(), 2)
     total_registros = df_filtrado.shape[0]
     st.markdown(f"**Total de registros:** {total_registros}")
     st.markdown(f"**Total de horas registradas:** {total_horas} h")
 
-    # Botão para exportar Excel
     excel_data = exportar_excel(df_filtrado)
     st.download_button(
         label="📥 Exportar registros filtrados para Excel",
@@ -106,9 +96,7 @@ if not df_filtrado.empty:
 else:
     st.info("Nenhum registro encontrado para os filtros selecionados.")
 
-# Logout
 if st.button("Sair"):
     st.session_state.logged_in = False
-    st.experimental_set_query_params()
+    st.set_query_params()  # limpa os query params
     st.experimental_rerun()
-
